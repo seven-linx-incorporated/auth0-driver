@@ -3,10 +3,16 @@ declare(strict_types=1);
 
 namespace SevenLinX\Auth\Auth0;
 
+use Auth0\SDK\API\Authentication;
 use Auth0\SDK\Auth0;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use SevenLinX\Auth\Auth0\Contracts\Auth0ServiceContract;
+
+use SevenLinX\Auth\Auth0\Contracts\ConfigContract;
+
+use SevenLinX\Auth\Auth0\Contracts\RepositoryContract;
+use SevenLinX\Auth\Auth0\DTO\Config;
 
 use function array_merge;
 
@@ -16,14 +22,15 @@ use function array_merge;
 final class Auth0Service implements Auth0ServiceContract
 {
     /**
-     * @var string[]
+     * @var string
      */
-    private array $defaultSupportedAlgorithms = [
-        'RS256',
-    ];
+    public const AUTH_DRIVER_NAME = 'sevenlinx-auth0';
 
-    public function __construct(private Request $request, private array $config)
+    private ConfigContract $config;
+
+    public function __construct(private Request $request, private array $configArray)
     {
+        $this->config = new Config($this->configArray);
     }
 
     public function __call($method, $parameters)
@@ -31,60 +38,27 @@ final class Auth0Service implements Auth0ServiceContract
         return $this->repository()->$method(...$parameters);
     }
 
-    public function repository(): Repository
+    public function repository(): RepositoryContract
     {
-        return new Repository(new Auth0(array_merge(
-            $this->config,
+        $auth0 = new Auth0(array_merge(
+            $this->config->toArray(),
             [
-                'client_id' => $this->getClientID(),
-                'client_secret' => $this->getClientSecret(),
-                'domain' => $this->getDomain(),
-                'redirect_uri' => $this->getRedirectUri(),
-                'audience' => $this->getAudienceIdentifier(),
-                'guzzle_options' => $this->getClientOptions(),
+                'client_id' => $this->config->getClientID(),
+                'client_secret' => $this->config->getClientSecret(),
+                'domain' => $this->config->getDomain(),
+                'redirect_uri' => $this->config->getRedirectUri(),
+                'audience' => $this->config->getAudienceIdentifier(),
+                'guzzle_options' => $this->config->getClientOptions(),
             ]
-        )));
-    }
+        ));
+        $authentication = new Authentication(
+            $this->config->getDomain(),
+            $this->config->getClientID(),
+            $this->config->getClientSecret(),
+            $this->config->getAudienceIdentifier(),
+            guzzleOptions: $this->config->getClientOptions() ?? []
+        );
 
-    public function getClientID(): ?string
-    {
-        return $this->getConfig('clientID');
-    }
-
-    public function getConfig(string $key): mixed
-    {
-        return Arr::dot($this->config)[$key] ?? null;
-    }
-
-    public function getClientSecret(): ?string
-    {
-        return $this->getConfig('clientSecret');
-    }
-
-    public function getDomain(): ?string
-    {
-        return $this->getConfig('domain');
-    }
-
-    public function getRedirectUri(): ?string
-    {
-        return $this->getConfig('redirectUri')
-            ?? ($this->request->getSchemeAndHttpHost().'/auth/callback');
-    }
-
-    public function getAudienceIdentifier(): ?string
-    {
-        return $this->getConfig('audienceIdentifier');
-    }
-
-    public function getClientOptions(): ?array
-    {
-        return $this->getConfig('clientOptions') ?? [];
-    }
-
-    public function getSupportedAlgorithms(): ?array
-    {
-        return $this->getConfig('supportedAlgs')
-            ?? $this->defaultSupportedAlgorithms;
+        return new Repository($auth0, $authentication, $this->config, $this->request);
     }
 }

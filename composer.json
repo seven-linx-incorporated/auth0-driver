@@ -7,7 +7,8 @@
         "auth0/auth0-php": "^7.7",
         "illuminate/contracts": "^8.0",
         "illuminate/http": "^8.0",
-        "illuminate/support": "^8.0"
+        "illuminate/support": "^8.0",
+        "psr/simple-cache": "^1.0"
     },
     "require-dev": {
         "auth0/login": "^6.4",
