@@ -19,16 +19,21 @@ final class RepositoryTest extends AbstractTestCase
     public function testGetUserFailed(): void
     {
         $token = 'token';
+        /** @var \Auth0\SDK\API\Authentication $authentication */
         $authentication = $this->mock(Authentication::class, function (MockInterface $mock) use ($token) {
             $mock->shouldReceive('userinfo')
                 ->with($token)
                 ->andThrow(ErrorException::class);
         });
+        /** @var \Auth0\SDK\Auth0 $auth0 */
+        $auth0 = $this->mock(Auth0::class);
+        /** @var \SevenLinX\Auth\Auth0\Contracts\ConfigContract $config */
+        $config = $this->mock(ConfigContract::class);
 
         $repository = new Repository(
-            $this->mock(Auth0::class),
+            $auth0,
             $authentication,
-            $this->mock(ConfigContract::class)
+            $config
         );
 
         self::assertNull($repository->getUser('token'));
@@ -37,6 +42,7 @@ final class RepositoryTest extends AbstractTestCase
     public function testGetUserSuccessfully(): void
     {
         $token = 'token';
+        /** @var \Auth0\SDK\API\Authentication $authentication */
         $authentication = $this->mock(Authentication::class, function (MockInterface $mock) use ($token) {
             $mock->shouldReceive('userinfo')
                 ->with($token)
@@ -44,11 +50,15 @@ final class RepositoryTest extends AbstractTestCase
                     'foo' => 'bar',
                 ]);
         });
+        /** @var \Auth0\SDK\Auth0 $auth0 */
+        $auth0 = $this->mock(Auth0::class);
+        /** @var \SevenLinX\Auth\Auth0\Contracts\ConfigContract $config */
+        $config = $this->mock(ConfigContract::class);
 
         $repository = new Repository(
-            $this->mock(Auth0::class),
+            $auth0,
             $authentication,
-            $this->mock(ConfigContract::class)
+            $config
         );
 
         self::assertNotEmpty($repository->getUser('token'));

@@ -5,12 +5,12 @@ namespace SevenLinX\Auth\Auth0;
 
 use Auth0\SDK\API\Authentication;
 use Auth0\SDK\Auth0;
+use Illuminate\Contracts\Auth\Access\Gate;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
+use SevenLinX\Auth\Auth0\Constants\Auth0Keys;
 use SevenLinX\Auth\Auth0\Contracts\Auth0ServiceContract;
-
 use SevenLinX\Auth\Auth0\Contracts\ConfigContract;
-
 use SevenLinX\Auth\Auth0\Contracts\RepositoryContract;
 use SevenLinX\Auth\Auth0\DTO\Config;
 
@@ -28,27 +28,43 @@ final class Auth0Service implements Auth0ServiceContract
 
     private ConfigContract $config;
 
-    public function __construct(private Request $request, private array $configArray)
+    public function __construct(private Gate $gate, private Request $request, private array $configArray)
     {
         $this->config = new Config($this->configArray);
     }
 
-    public function __call($method, $parameters)
+    public function __call(string $method, array $parameters)
     {
         return $this->repository()->$method(...$parameters);
     }
 
+    public function config(): ConfigContract
+    {
+        return $this->config;
+    }
+
+    /**
+     * @throws \Auth0\SDK\Exception\CoreException
+     */
+    public function getUser(string $token): Authenticatable
+    {
+        return new Auth0User($this->gate, $this->repository()->getUser($token), $token);
+    }
+
+    /**
+     * @throws \Auth0\SDK\Exception\CoreException
+     */
     public function repository(): RepositoryContract
     {
         $auth0 = new Auth0(array_merge(
             $this->config->toArray(),
             [
-                'client_id' => $this->config->getClientID(),
-                'client_secret' => $this->config->getClientSecret(),
-                'domain' => $this->config->getDomain(),
-                'redirect_uri' => $this->config->getRedirectUri(),
-                'audience' => $this->config->getAudienceIdentifier(),
-                'guzzle_options' => $this->config->getClientOptions(),
+                Auth0Keys::CLIENT_ID => $this->config->getClientID(),
+                Auth0Keys::CLIENT_SECRET => $this->config->getClientSecret(),
+                Auth0Keys::DOMAIN => $this->config->getDomain(),
+                Auth0Keys::REDIRECT_URI => $this->config->getRedirectUri(),
+                Auth0Keys::AUDIENCE => $this->config->getAudienceIdentifier(),
+                Auth0Keys::CLIENT_OPTIONS => $this->config->getClientOptions(),
             ]
         ));
         $authentication = new Authentication(
@@ -59,6 +75,11 @@ final class Auth0Service implements Auth0ServiceContract
             guzzleOptions: $this->config->getClientOptions() ?? []
         );
 
-        return new Repository($auth0, $authentication, $this->config, $this->request);
+        return new Repository(
+            $auth0,
+            $authentication,
+            $this->config,
+            $this->request
+        );
     }
 }

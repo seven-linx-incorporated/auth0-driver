@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace SevenLinX\Auth\Auth0;
 
+use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ final class Auth0Guard implements Guard
 {
     private ?Authenticatable $user = null;
 
-    public function __construct(private Repository $repository, private Request $request)
+    public function __construct(private Gate $gate, private Repository $repository, private Request $request)
     {
         $this->repository->setRequest($request);
     }
@@ -48,7 +49,9 @@ final class Auth0Guard implements Guard
 
         $user = $this->repository->getUser();
 
-        return $this->user = $user !== null ? new Auth0User($user, $this->request->bearerToken()) : null;
+        return $this->user = $user !== null
+            ? new Auth0User($this->gate, $user, $this->request->bearerToken())
+            : null;
     }
 
     /**
@@ -62,7 +65,7 @@ final class Auth0Guard implements Guard
     /**
      * @inheritDoc
      */
-    public function validate(array $credentials = [])
+    public function validate(array $credentials = []): bool
     {
         $token = $credentials['token'] ?? $this->request->bearerToken() ?? null;
 

@@ -19,6 +19,8 @@ interface ConfigContract extends Arrayable
 
     public function getDomain(): ?string;
 
+    public function getHeaderUserIdKey(): ?string;
+
     public function getRedirectUri(): ?string;
 
     public function getSupportedAlgorithms(): ?array;

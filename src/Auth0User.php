@@ -3,13 +3,15 @@ declare(strict_types=1);
 
 namespace SevenLinX\Auth\Auth0;
 
+use Illuminate\Contracts\Auth\Access\Authorizable;
+use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Auth\Authenticatable;
 
 use function array_key_exists;
 
-final class Auth0User implements Authenticatable
+final class Auth0User implements Authenticatable, Authorizable
 {
-    public function __construct(private array $userInfo, private string $token)
+    public function __construct(private Gate $gate, private array $userInfo, private string $token)
     {
     }
 
@@ -31,9 +33,14 @@ final class Auth0User implements Authenticatable
     /**
      * @inheritDoc
      */
-    public function getAuthIdentifierName(): string
+    public function can($abilities, $arguments = []): bool
     {
-        return 'id';
+        return $this->gate->forUser($this)->check($abilities, $arguments);
+    }
+
+    public function canAny(iterable|string $abilities, mixed $arguments): bool
+    {
+        return $this->gate->forUser($this)->any($abilities, $arguments ?? []);
     }
 
     /**
@@ -42,6 +49,14 @@ final class Auth0User implements Authenticatable
     public function getAuthIdentifier(): ?string
     {
         return $this->userInfo['sub'] ?? $this->userInfo['user_id'] ?? null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getAuthIdentifierName(): string
+    {
+        return 'id';
     }
 
     /**
@@ -63,16 +78,16 @@ final class Auth0User implements Authenticatable
     /**
      * @inheritDoc
      */
-    public function setRememberToken($value): void
+    public function getRememberTokenName(): string
     {
-        $this->token = $value;
+        return 'token';
     }
 
     /**
      * @inheritDoc
      */
-    public function getRememberTokenName(): string
+    public function setRememberToken($value): void
     {
-        return 'token';
+        $this->token = $value;
     }
 }

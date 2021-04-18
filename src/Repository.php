@@ -7,6 +7,8 @@ use Auth0\SDK\API\Authentication;
 use Auth0\SDK\Auth0;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use SevenLinX\Auth\Auth0\Constants\Auth0Keys;
+use SevenLinX\Auth\Auth0\Constants\TokenAlgorithms;
 use SevenLinX\Auth\Auth0\Contracts\ConfigContract;
 use SevenLinX\Auth\Auth0\Contracts\RepositoryContract;
 use Throwable;
@@ -37,7 +39,7 @@ final class Repository implements RepositoryContract
         $verifier = new TokenVerifier(
             sprintf('https://%s/', $this->config->getDomain()),
             $this->config->getAudienceIdentifier(),
-            $this->config->getSupportedAlgorithms()[0] ?? 'RS256',
+            $this->config->getSupportedAlgorithms()[0] ?? TokenAlgorithms::RS256
         );
 
         return $verifier->getUser($token, $options);
@@ -61,16 +63,16 @@ final class Repository implements RepositoryContract
         ?string $state = null,
         ?array $additionalParams = null
     ): RedirectResponse {
-        $scopes = empty($scopes) === true ? ['openid', 'profile', 'email'] : $scopes;
+        $scopes = empty($scopes) === true ? ['email', 'openid', 'profile'] : $scopes;
         $params = [
-            'response_type' => $responseType,
-            'scope' => implode(' ', $scopes),
+            Auth0Keys::RESPONSE_TYPE => $responseType,
+            Auth0Keys::SCOPE => implode(' ', $scopes),
         ];
         if ($connection !== null) {
-            $params['connection'] = $connection;
+            $params[Auth0Keys::CONNECTION] = $connection;
         }
         if ($state !== null) {
-            $params['state'] = $state;
+            $params[Auth0Keys::STATE] = $state;
         }
         $params = array_merge($additionalParams ?? [], $params);
 

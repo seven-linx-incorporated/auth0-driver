@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace SevenLinX\Auth\Auth0\DTO;
 
 use Illuminate\Support\Arr;
+use SevenLinX\Auth\Auth0\Constants\TokenAlgorithms;
 use SevenLinX\Auth\Auth0\Contracts\ConfigContract;
 
 final class Config implements ConfigContract
@@ -12,7 +13,7 @@ final class Config implements ConfigContract
      * @var string[]
      */
     private array $defaultSupportedAlgorithms = [
-        'RS256',
+        TokenAlgorithms::RS256,
     ];
 
     public function __construct(private array $config)
@@ -63,5 +64,10 @@ final class Config implements ConfigContract
     {
         return $this->getConfig('supportedAlgs')
             ?? $this->defaultSupportedAlgorithms;
+    }
+
+    public function getHeaderUserIdKey(): ?string
+    {
+        return $this->getConfig('headerUserIdKey') ?? 'x-user-id';
     }
 }
